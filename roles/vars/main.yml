@@ -1,0 +1,10 @@
+--- 
+#java_home: JAVA_HOME="/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.181-7.b13.el7.x86_64"
+#jboss_home: JBOSS_HOME="/home/eapuser/jboss-eap-7.2"
+#jboss_config: JBOSS_CONFIG=standalone-full.xml
+#jboss_user: JBOSS_USER=eapuser
+java_home: /usr/lib/jvm/java-1.8.0-openjdk-1.8.0.181-7.b13.el7.x86_64
+jboss_home: /home/eapuser/jboss-eap-7.2
+jboss_config: standalone-full.xml
+jboss_user: eapuser
+

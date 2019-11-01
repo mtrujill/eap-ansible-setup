@@ -1,0 +1,12 @@
+[Unit]
+Description=JBoss EAP Service
+After=network.target
+
+[Service]
+Type=simple
+User={{ jboss_user }}
+ExecStart={{ jboss_home }}/bin/standalone.sh -c {{ jboss_config }} 
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,108 @@
+### Setup JBoss EAP on the remote machine ###
+---
+- name: Unzip the EAP download
+  unarchive: 
+    src: /home/trujillo/Downloads/jboss-eap-7.2.0.zip
+    dest: /home/eapuser
+
+- name: Change directory permissions on the EAP install
+  file:
+     path: /home/eapuser/jboss-eap-7.2
+     state: directory
+     recurse: yes
+     owner: eapuser
+     group: eapuser
+     mode: '0755'
+
+- name: Add a EAP management user
+  command: /home/eapuser/jboss-eap-7.2/bin/add-user.sh -p blah -u blahuser -r ManagementRealm -e  
+
+- name: Add a EAP application user
+  command: /home/eapuser/jboss-eap-7.2/bin/add-user.sh -a -p blahappuser -u blahappuser1 -e 
+
+- name: Prepare jboss_eap.service
+  template: 
+     src: /home/trujillo/sandbox/eap-ansible-setup/roles/files/jboss_eap.service
+     dest: /etc/systemd/system/jboss_eap.service
+
+- name: Reload systemd daemon  
+  command: systemctl daemon-reload 
+
+- name: Start the JBoss EAP service 
+  command: systemctl start jboss_eap 
+
+- name: Have the JBoss EAP service start on boot
+  command: systemctl enable jboss_eap
+
+- name: Verify JBoss EAP is started 
+  command: /home/eapuser/jboss-eap-7.2/bin/jboss-cli.sh -c --commands="read-attribute server-state" 
+  register: result
+  until: result is succeeded
+  retries: 10
+  delay: 5 
+
+- name: Change the unsecure interface so JBoss EAP will accept clients
+  command: /home/eapuser/jboss-eap-7.2/bin/jboss-cli.sh -c --commands="/interface=unsecure:write-attribute(name=inet-address,value=${jboss.bind.address.unsecure:0.0.0.0})"
+
+- name: Change the management interface so JBoss EAP will accept clients
+  command: /home/eapuser/jboss-eap-7.2/bin/jboss-cli.sh -c --commands="/interface=management:write-attribute(name=inet-address,value=${jboss.bind.address.management:0.0.0.0})"
+
+- name: Change the public interface so JBoss EAP will accept clients
+  command: /home/eapuser/jboss-eap-7.2/bin/jboss-cli.sh -c --commands="/interface=public:write-attribute(name=inet-address,value=${jboss.bind.address:0.0.0.0})"
+
+- name: Reload JBoss EAP
+  command: /home/eapuser/jboss-eap-7.2/bin/jboss-cli.sh -c --commands=":reload"
+
+### Setup developer stuff ###
+- name: Download Maven
+  become: yes
+  become_user: eapuser
+  get_url: 
+     url: http://apache.cs.utah.edu/maven/maven-3/3.6.2/binaries/apache-maven-3.6.2-bin.zip
+     dest: /home/eapuser/Downloads
+     mode: '0755'
+
+- name: Unzip Maven
+  become: yes
+  become_user: eapuser
+  unarchive: 
+    src: /home/eapuser/Downloads/apache-maven-3.6.2-bin.zip
+    dest: /home/eapuser
+    remote_src: yes
+    mode: '0755'
+
+- name: Install Git
+  yum: 
+     name: git
+     state: latest
+
+- name: Setup developer sandbox
+  become: yes
+  become_user: eapuser
+  file: 
+     path: /home/eapuser/sandbox
+     state: directory 
+     mode: '0755'
+
+- name: Checkout code
+  become: yes
+  become_user: eapuser
+  git:
+     repo: https://github.com/mtrujill/jboss-eap-quickstarts.git 
+     dest: /home/eapuser/sandbox
+
+- name: Build the helloworld app
+  become: yes
+  become_user: eapuser
+  command: /home/eapuser/apache-maven-3.6.2/bin/mvn clean install 
+  args:
+    chdir: /home/eapuser/sandbox/helloworld
+
+- name: Deploy the helloworld app
+  become: yes
+  become_user: eapuser
+  jboss: 
+     deploy_path: /home/eapuser/jboss-eap-7.2/standalone/deployments
+     src: /home/eapuser/sandbox/helloworld/target/helloworld.war
+     deployment: helloworld.war
+     state: present

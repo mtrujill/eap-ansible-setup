@@ -1,0 +1,7 @@
+# Playbook to configure a single instance of standalone EAP.
+- hosts: eapvms 
+  remote_user: eapuser
+  become: yes
+
+  roles:
+    - roles 
